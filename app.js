@@ -638,8 +638,13 @@
   //   https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=YOURKEY
   const TURN_FETCH_URL = "";
   // …or paste static TURN entries here instead:
-  //   [{ urls: "turn:global.relay.metered.ca:80", username: "…", credential: "…" }]
-  const EXTRA_ICE_SERVERS = [];
+  const EXTRA_ICE_SERVERS = [
+    { urls: "stun:stun.relay.metered.ca:80" },
+    { urls: "turn:global.relay.metered.ca:80", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+    { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+    { urls: "turn:global.relay.metered.ca:443", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+    { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+  ];
 
   const BASE_ICE = [
     { urls: "stun:stun.l.google.com:19302" },
