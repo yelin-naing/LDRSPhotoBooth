@@ -31,6 +31,22 @@ then open http://localhost:8420.
 > To use it together from two places, host it somewhere with HTTPS —
 > GitHub Pages, Netlify, or Vercel all work for free.
 
+## If live mode won't connect (strict mobile networks)
+
+Live together mode connects your two devices directly. On some mobile carrier
+networks a direct connection is blocked, and the join gets stuck on
+"still trying…". The fix is a TURN relay — free for this app's usage:
+
+1. Create a free account at <https://www.metered.ca/stun-turn> (20 GB/month free —
+   far more than a couple ever needs; the relay only engages when a direct
+   connection is impossible).
+2. In the Metered dashboard, copy your **credentials URL** — it looks like
+   `https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=YOURKEY`.
+3. Open `app.js`, find `TURN_FETCH_URL = ""` near the "optional TURN relay"
+   comment, and paste the URL between the quotes.
+4. Commit and push — done. The relay traffic is encrypted end-to-end; the relay
+   can't see your video, and photos still never leave your devices.
+
 ## Stack
 
 Plain HTML, CSS, and JavaScript. No build step. [PeerJS](https://peerjs.com)

@@ -631,6 +631,36 @@
     if (state.coupleUrl) shareDataUrl(state.coupleUrl, `twobooth-together-${fileStamp()}.png`);
   });
 
+  // ---------- optional TURN relay ----------
+  // Direct peer-to-peer fails on some strict mobile networks (carrier NAT).
+  // To fix it, create a free account at https://www.metered.ca/stun-turn
+  // and paste your "credentials URL" below — it looks like:
+  //   https://YOURAPP.metered.live/api/v1/turn/credentials?apiKey=YOURKEY
+  const TURN_FETCH_URL = "";
+  // …or paste static TURN entries here instead:
+  //   [{ urls: "turn:global.relay.metered.ca:80", username: "…", credential: "…" }]
+  const EXTRA_ICE_SERVERS = [];
+
+  const BASE_ICE = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+  ];
+
+  let cachedIce = null;
+  async function iceConfig() {
+    if (!cachedIce) {
+      let extra = EXTRA_ICE_SERVERS;
+      if (TURN_FETCH_URL) {
+        try {
+          const list = await (await fetch(TURN_FETCH_URL)).json();
+          if (Array.isArray(list) && list.length) extra = list;
+        } catch (_) { /* relay service unreachable — keep direct-only */ }
+      }
+      cachedIce = { iceServers: BASE_ICE.concat(extra) };
+    }
+    return cachedIce;
+  }
+
   // ---------- live together (duo) ----------
   function genCode() {
     const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no lookalike characters
@@ -663,7 +693,7 @@
       state.capturing || !state.stream || (isDuo && (duo.role !== "host" || !duo.connOpen || !duo.remoteReady));
   }
 
-  function hostRoom() {
+  async function hostRoom() {
     leaveDuo(true);
     if (!window.Peer) {
       $("#hostStatus").textContent = "couldn't load the connection service — check your internet and reload.";
@@ -674,7 +704,9 @@
     duo.code = genCode();
     $("#roomCode").hidden = true;
     $("#hostStatus").textContent = "setting up your room…";
-    const peer = new Peer(DUO_PREFIX + duo.code.toLowerCase());
+    const config = await iceConfig();
+    if (!duo.active || duo.role !== "host") return; // user backed out while fetching
+    const peer = new Peer(DUO_PREFIX + duo.code.toLowerCase(), { config });
     duo.peer = peer;
     peer.on("open", () => {
       $("#roomCode").textContent = duo.code;
@@ -693,7 +725,7 @@
     peer.on("disconnected", () => { if (duo.active && duo.peer) duo.peer.reconnect(); });
   }
 
-  function joinRoom(code) {
+  async function joinRoom(code) {
     leaveDuo(true);
     if (!window.Peer) {
       $("#joinStatus").textContent = "couldn't load the connection service — check your internet and reload.";
@@ -703,13 +735,22 @@
     duo.role = "guest";
     duo.code = code;
     $("#joinStatus").textContent = "looking for their booth…";
-    const peer = new Peer();
+    const config = await iceConfig();
+    if (!duo.active || duo.role !== "guest") return; // user backed out while fetching
+    const peer = new Peer({ config });
     duo.peer = peer;
     peer.on("open", () => {
       wireConn(peer.connect(DUO_PREFIX + code.toLowerCase(), { reliable: true }));
     });
     peer.on("error", handlePeerError);
     peer.on("disconnected", () => { if (duo.active && duo.peer) duo.peer.reconnect(); });
+    // if the room was found but the devices can't reach each other, say so
+    setTimeout(() => {
+      if (duo.active && duo.role === "guest" && duo.peer === peer && !duo.connOpen) {
+        $("#joinStatus").textContent =
+          "still trying… if this never connects, your two networks can't link directly — a relay is needed (see the README on GitHub).";
+      }
+    }, 15000);
   }
 
   function wireConn(conn) {
