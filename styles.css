@@ -75,6 +75,14 @@ main { flex: 1; }
   letter-spacing: 0.05em;
 }
 
+.foot a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.foot a:hover { color: var(--accent); }
+
 /* ============ screens ============ */
 .screen {
   display: none;

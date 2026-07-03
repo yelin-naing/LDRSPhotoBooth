@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>two·booth — connection check</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c9564e' d='M12 21c-.4 0-.8-.15-1.1-.44C6.1 16.16 2 12.36 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A5.98 5.98 0 0 1 16.5 3C19.58 3 22 5.42 22 8.5c0 3.86-4.1 7.66-8.9 12.06-.3.29-.7.44-1.1.44z'/%3E%3C/svg%3E" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", "Inter", sans-serif;
+      background: #fbfaf7; color: #1c1a17;
+      max-width: 560px; margin: 0 auto; padding: 28px 20px 40px;
+      line-height: 1.5;
+    }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 6px; }
+    .sub { color: #8d877d; font-size: 0.88rem; margin: 0 0 22px; }
+    .test {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 14px 16px; background: #fff;
+      border: 1.5px solid #e7e3da; border-radius: 12px; margin: 10px 0;
+    }
+    .badge { font-size: 1.15rem; width: 24px; text-align: center; flex: none; }
+    .name { font-weight: 600; font-size: 0.95rem; }
+    .note { color: #8d877d; font-size: 0.8rem; margin-top: 2px; }
+    .pass { color: #2e7d32; } .fail { color: #c62828; } .wait { color: #b5afa4; }
+    #summary {
+      margin-top: 20px; padding: 14px 16px; border-radius: 12px;
+      background: #1c1a17; color: #fbfaf7; font-family: monospace;
+      font-size: 0.82rem; white-space: pre-wrap; word-break: break-word;
+    }
+    .summary-label { font-size: 0.75rem; color: #8d877d; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: 0.12em; }
+    a { color: #c9564e; }
+  </style>
+</head>
+<body>
+  <h1>connection check</h1>
+  <p class="sub">This tests everything <strong>live together mode</strong> needs, from this device's network. When it finishes, send a screenshot (or the result code below) to your partner.</p>
+
+  <div id="tests"></div>
+
+  <p class="summary-label">result code</p>
+  <div id="summary">running&hellip;</div>
+
+  <p class="sub" style="margin-top:22px"><a href="index.html">&larr; back to the booth</a></p>
+
+  <script src="peerjs.min.js"></script>
+  <script>
+    (async () => {
+      "use strict";
+
+      const ICE_SERVERS = [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun.relay.metered.ca:80" },
+        { urls: "turn:global.relay.metered.ca:80", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+        { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+        { urls: "turn:global.relay.metered.ca:443", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+        { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "8e8c020fbc671512bf009b53", credential: "yWnWUUiFUNNGvONE" },
+      ];
+
+      const TESTS = [
+        ["lib", "1 · connection library"],
+        ["signal", "2 · room-code server"],
+        ["stun", "3 · direct connection (STUN)"],
+        ["turn", "4 · relay server (TURN)"],
+        ["camera", "5 · camera"],
+      ];
+
+      const results = {};
+      const wrap = document.getElementById("tests");
+      for (const [id, name] of TESTS) {
+        const el = document.createElement("div");
+        el.className = "test";
+        el.innerHTML =
+          '<div class="badge wait" id="b-' + id + '">&hellip;</div>' +
+          '<div><div class="name">' + name + '</div>' +
+          '<div class="note" id="n-' + id + '">testing&hellip;</div></div>';
+        wrap.appendChild(el);
+      }
+
+      const render = () => {
+        const code = TESTS.map(([id]) =>
+          id + ":" + (results[id] === undefined ? "…" : results[id] ? "OK" : "FAIL")
+        ).join("  ");
+        document.getElementById("summary").textContent = code;
+      };
+
+      const set = (id, ok, note) => {
+        results[id] = ok;
+        const b = document.getElementById("b-" + id);
+        b.innerHTML = ok ? "&#10003;" : "&#10007;";
+        b.className = "badge " + (ok ? "pass" : "fail");
+        document.getElementById("n-" + id).textContent = note;
+        render();
+      };
+
+      // 1 · library (self-hosted, so this really tests the site host)
+      const libOk = typeof window.Peer === "function";
+      set("lib", libOk, libOk ? "loaded" : "failed to load — the site host may be blocked");
+
+      // 2 · signaling server
+      await new Promise((done) => {
+        if (!libOk) { set("signal", false, "skipped — library missing"); done(); return; }
+        let settled = false;
+        const finish = (ok, note, p) => {
+          if (settled) return;
+          settled = true;
+          if (p) { try { p.destroy(); } catch (_) {} }
+          set("signal", ok, note);
+          done();
+        };
+        try {
+          const p = new Peer();
+          p.on("open", () => finish(true, "connected", p));
+          p.on("error", (e) => finish(false, "error: " + ((e && e.type) || e), p));
+          setTimeout(() => finish(false, "timed out — the server may be blocked on this network", p), 12000);
+        } catch (e) {
+          finish(false, String(e));
+        }
+      });
+
+      // 3 + 4 · STUN and TURN reachability
+      await new Promise((done) => {
+        let srflx = false, relay = false, settled = false;
+        let pc;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          try { pc && pc.close(); } catch (_) {}
+          set("stun", srflx, srflx ? "reachable" : "no response — this network may block it");
+          set("turn", relay, relay
+            ? "relay reachable — strict networks are handled"
+            : "relay unreachable — live mode can't connect from this network");
+          done();
+        };
+        try {
+          pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+          pc.createDataChannel("probe");
+          pc.onicecandidate = (e) => {
+            if (!e.candidate) { finish(); return; }
+            if (/typ srflx/.test(e.candidate.candidate)) srflx = true;
+            if (/typ relay/.test(e.candidate.candidate)) relay = true;
+          };
+          pc.createOffer().then((o) => pc.setLocalDescription(o));
+          setTimeout(finish, 16000);
+        } catch (e) {
+          finish();
+        }
+      });
+
+      // 5 · camera
+      try {
+        const s = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        s.getTracks().forEach((t) => t.stop());
+        set("camera", true, "allowed");
+      } catch (e) {
+        set("camera", false,
+          ((e && e.name) || "error") +
+          " — allow camera access, and open this page in Safari or Chrome (not inside a chat app)");
+      }
+    })();
+  </script>
+</body>
+</html>
