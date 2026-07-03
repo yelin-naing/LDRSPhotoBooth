@@ -127,10 +127,12 @@
         <div class="camera-wrap" id="cameraWrap">
           <div class="video-pane">
             <video id="video" autoplay playsinline muted></video>
+            <canvas class="filter-overlay" id="localOverlay"></canvas>
             <span class="video-label" id="localLabel" hidden>you</span>
           </div>
           <div class="video-pane" id="remotePane" hidden>
             <video id="remoteVideo" autoplay playsinline muted></video>
+            <canvas class="filter-overlay" id="remoteOverlay"></canvas>
             <span class="video-label">them</span>
             <div class="remote-waiting" id="remoteWaiting">waiting for them&hellip;</div>
           </div>
@@ -142,6 +144,16 @@
           </div>
         </div>
         <p class="duo-status" id="duoStatus" hidden></p>
+
+        <div class="filter-row" id="filterRow" role="radiogroup" aria-label="Fun filters">
+          <button class="filter-chip selected" data-filter="none" role="radio" aria-checked="true">&#10005; none</button>
+          <button class="filter-chip" data-filter="dog" role="radio" aria-checked="false">&#128054; dog</button>
+          <button class="filter-chip" data-filter="bunny" role="radio" aria-checked="false">&#128048; bunny</button>
+          <button class="filter-chip" data-filter="shades" role="radio" aria-checked="false">&#128526; shades</button>
+          <button class="filter-chip" data-filter="mustache" role="radio" aria-checked="false">&#129502; stache</button>
+          <button class="filter-chip" data-filter="hearts" role="radio" aria-checked="false">&#128149; hearts</button>
+          <button class="filter-chip" data-filter="crown" role="radio" aria-checked="false">&#128081; crown</button>
+        </div>
 
         <div class="shot-dots" id="shotDots" aria-label="Photos taken"></div>
 

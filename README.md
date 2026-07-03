@@ -11,6 +11,8 @@ and take every photo together in real time.
 - **Live together mode** — one of you hosts and gets a 4-letter code, the other
   joins with it. You see each other side by side and every photo captures you
   both at the same moment. Both of you get the same strip.
+- **Fun filters** — dog, bunny, shades, mustache, heart crown, and crown; each of
+  you picks your own, sees each other's live, and both land on the strip
 - **Combine mode** — merge two separately-taken strips into one couple frame
 - **Private by design** — no accounts, no backend, photos never leave your devices.
   Live mode uses a direct peer-to-peer WebRTC connection (PeerJS is used only to

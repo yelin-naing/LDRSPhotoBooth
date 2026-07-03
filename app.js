@@ -8,6 +8,7 @@
   const state = {
     theme: "classic",
     shots: 3,
+    filter: "none",
     facing: "user",
     stream: null,
     capturing: false,
@@ -29,6 +30,7 @@
     connOpen: false,
     remoteReady: false,
     remoteCamTrouble: false,
+    remoteFilter: "none",
   };
 
   const $ = (sel) => document.querySelector(sel);
@@ -126,6 +128,182 @@
     ctx.fill();
   }
 
+  // ---------- fun filters ----------
+  // Drawn as vector overlays sized to a "typical face" spot in the frame —
+  // line up your face with the preview and they land right.
+  function faceBox(r) {
+    const fw = Math.min(r.w * 0.62, r.h * 0.5);
+    return {
+      cx: r.x + r.w / 2,
+      fw,
+      top: r.y + r.h * 0.2,
+      eyeY: r.y + r.h * 0.4,
+      noseY: r.y + r.h * 0.5,
+      mouthY: r.y + r.h * 0.62,
+    };
+  }
+
+  function blob(ctx, x, y, rx, ry, rot, fill) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const FILTERS = {
+    none: null,
+    dog(ctx, r) {
+      const f = faceBox(r);
+      blob(ctx, f.cx - f.fw * 0.45, f.top, f.fw * 0.16, f.fw * 0.3, -0.5, "#7a4f33");
+      blob(ctx, f.cx + f.fw * 0.45, f.top, f.fw * 0.16, f.fw * 0.3, 0.5, "#7a4f33");
+      blob(ctx, f.cx - f.fw * 0.45, f.top + f.fw * 0.03, f.fw * 0.09, f.fw * 0.2, -0.5, "#a8765a");
+      blob(ctx, f.cx + f.fw * 0.45, f.top + f.fw * 0.03, f.fw * 0.09, f.fw * 0.2, 0.5, "#a8765a");
+      blob(ctx, f.cx, f.noseY, f.fw * 0.13, f.fw * 0.095, 0, "#26201c");
+      blob(ctx, f.cx - f.fw * 0.045, f.noseY - f.fw * 0.03, f.fw * 0.035, f.fw * 0.02, -0.4, "rgba(255,255,255,0.35)");
+      ctx.fillStyle = "#ff8fa3";
+      roundRect(ctx, f.cx - f.fw * 0.09, f.mouthY, f.fw * 0.18, f.fw * 0.26, f.fw * 0.09);
+      ctx.fill();
+      ctx.strokeStyle = "#e56f86";
+      ctx.lineWidth = Math.max(2, f.fw * 0.015);
+      ctx.beginPath();
+      ctx.moveTo(f.cx, f.mouthY + f.fw * 0.05);
+      ctx.lineTo(f.cx, f.mouthY + f.fw * 0.2);
+      ctx.stroke();
+    },
+    bunny(ctx, r) {
+      const f = faceBox(r);
+      const earY = f.top - f.fw * 0.3;
+      blob(ctx, f.cx - f.fw * 0.22, earY, f.fw * 0.11, f.fw * 0.38, -0.12, "#f7f3ee");
+      blob(ctx, f.cx + f.fw * 0.22, earY, f.fw * 0.11, f.fw * 0.38, 0.12, "#f7f3ee");
+      blob(ctx, f.cx - f.fw * 0.22, earY + f.fw * 0.04, f.fw * 0.055, f.fw * 0.26, -0.12, "#f5b8c4");
+      blob(ctx, f.cx + f.fw * 0.22, earY + f.fw * 0.04, f.fw * 0.055, f.fw * 0.26, 0.12, "#f5b8c4");
+      blob(ctx, f.cx, f.noseY, f.fw * 0.07, f.fw * 0.05, 0, "#f08ca0");
+      ctx.strokeStyle = "rgba(40,30,25,0.75)";
+      ctx.lineWidth = Math.max(2, f.fw * 0.012);
+      for (const side of [-1, 1]) {
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(f.cx + side * f.fw * 0.1, f.noseY + i * f.fw * 0.02);
+          ctx.quadraticCurveTo(
+            f.cx + side * f.fw * 0.3, f.noseY + i * f.fw * 0.06,
+            f.cx + side * f.fw * 0.45, f.noseY + i * f.fw * 0.09
+          );
+          ctx.stroke();
+        }
+      }
+    },
+    shades(ctx, r) {
+      const f = faceBox(r);
+      const lw = f.fw * 0.3, lh = f.fw * 0.2, gap = f.fw * 0.08;
+      ctx.fillStyle = "#17171a";
+      roundRect(ctx, f.cx - gap / 2 - lw, f.eyeY - lh / 2, lw, lh, lh * 0.35);
+      ctx.fill();
+      roundRect(ctx, f.cx + gap / 2, f.eyeY - lh / 2, lw, lh, lh * 0.35);
+      ctx.fill();
+      ctx.strokeStyle = "#17171a";
+      ctx.lineWidth = Math.max(3, f.fw * 0.03);
+      ctx.beginPath();
+      ctx.moveTo(f.cx - gap / 2, f.eyeY - lh * 0.15);
+      ctx.quadraticCurveTo(f.cx, f.eyeY - lh * 0.4, f.cx + gap / 2, f.eyeY - lh * 0.15);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(f.cx - gap / 2 - lw, f.eyeY - lh * 0.1);
+      ctx.lineTo(f.cx - f.fw * 0.62, f.eyeY - lh * 0.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(f.cx + gap / 2 + lw, f.eyeY - lh * 0.1);
+      ctx.lineTo(f.cx + f.fw * 0.62, f.eyeY - lh * 0.3);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.45)";
+      ctx.lineWidth = Math.max(2, f.fw * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(f.cx - gap / 2 - lw * 0.75, f.eyeY - lh * 0.15);
+      ctx.lineTo(f.cx - gap / 2 - lw * 0.35, f.eyeY + lh * 0.2);
+      ctx.stroke();
+    },
+    mustache(ctx, r) {
+      const f = faceBox(r);
+      const y = f.mouthY - f.fw * 0.06;
+      ctx.fillStyle = "#33241a";
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(f.cx, y);
+        ctx.bezierCurveTo(
+          f.cx + s * f.fw * 0.05, y - f.fw * 0.07,
+          f.cx + s * f.fw * 0.28, y - f.fw * 0.08,
+          f.cx + s * f.fw * 0.34, y - f.fw * 0.16
+        );
+        ctx.bezierCurveTo(
+          f.cx + s * f.fw * 0.38, y - f.fw * 0.02,
+          f.cx + s * f.fw * 0.2, y + f.fw * 0.09,
+          f.cx, y + f.fw * 0.035
+        );
+        ctx.closePath();
+        ctx.fill();
+      }
+    },
+    hearts(ctx, r) {
+      const f = faceBox(r);
+      const y0 = f.top - f.fw * 0.18;
+      const cols = ["#c9564e", "#e78fa0", "#c9564e", "#e78fa0", "#c9564e"];
+      const pos = [-0.5, -0.26, 0, 0.26, 0.5];
+      const ys = [0.06, -0.02, -0.07, -0.02, 0.06];
+      const sz = [0.07, 0.09, 0.12, 0.09, 0.07];
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = cols[i];
+        drawHeart(ctx, f.cx + pos[i] * f.fw * 1.15, y0 + ys[i] * f.fw, sz[i] * f.fw);
+      }
+    },
+    crown(ctx, r) {
+      const f = faceBox(r);
+      const w = f.fw * 0.72, h = f.fw * 0.4;
+      const x0 = f.cx - w / 2, yb = f.top - f.fw * 0.05;
+      ctx.fillStyle = "#e8b23a";
+      ctx.strokeStyle = "#c2902b";
+      ctx.lineWidth = Math.max(2, f.fw * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(x0, yb);
+      ctx.lineTo(x0, yb - h * 0.55);
+      ctx.lineTo(x0 + w * 0.25, yb - h * 0.3);
+      ctx.lineTo(f.cx, yb - h);
+      ctx.lineTo(x0 + w * 0.75, yb - h * 0.3);
+      ctx.lineTo(x0 + w, yb - h * 0.55);
+      ctx.lineTo(x0 + w, yb);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#c9564e";
+      [0.12, 0.5, 0.88].forEach((p) => {
+        ctx.beginPath();
+        ctx.arc(x0 + w * p, yb - h * 0.18, f.fw * 0.035, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    },
+  };
+
+  function applyFilter(ctx, key, region) {
+    if (key && FILTERS[key]) FILTERS[key](ctx, region);
+  }
+
+  function drawOverlay(canvas, key) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    applyFilter(ctx, key, { x: 0, y: 0, w, h });
+  }
+
+  function refreshOverlays() {
+    drawOverlay($("#localOverlay"), state.filter);
+    drawOverlay($("#remoteOverlay"), duo.active ? duo.remoteFilter : "none");
+  }
+
   function prettyDate() {
     return new Date()
       .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
@@ -191,6 +369,27 @@
     showScreen("screen-booth");
     renderDots(0, state.shots);
     await startCamera();
+  });
+
+  // ---------- filter picker ----------
+  $$(".filter-chip").forEach((chip) =>
+    chip.addEventListener("click", () => {
+      $$(".filter-chip").forEach((c) => {
+        c.classList.remove("selected");
+        c.setAttribute("aria-checked", "false");
+      });
+      chip.classList.add("selected");
+      chip.setAttribute("aria-checked", "true");
+      state.filter = chip.dataset.filter;
+      if (duo.active && duo.conn && duo.connOpen) {
+        try { duo.conn.send({ type: "filter", value: state.filter }); } catch (_) {}
+      }
+      refreshOverlays();
+    })
+  );
+
+  window.addEventListener("resize", () => {
+    if ($("#screen-booth").classList.contains("active")) refreshOverlays();
   });
 
   // ---------- camera ----------
@@ -338,6 +537,8 @@
       ctx.scale(-1, 1);
     }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, PHOTO_W, PHOTO_H);
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // undo the mirror before decorating
+    applyFilter(ctx, state.filter, { x: 0, y: 0, w: PHOTO_W, h: PHOTO_H });
     return c;
   }
 
@@ -380,6 +581,12 @@
       drawVideoHalf(ctx, remote, 0, true);
       drawVideoHalf(ctx, local, PHOTO_W / 2, localMirror);
     }
+    // each person's chosen filter lands on their own half
+    const half = PHOTO_W / 2;
+    const leftFilter = duo.role === "host" ? state.filter : duo.remoteFilter;
+    const rightFilter = duo.role === "host" ? duo.remoteFilter : state.filter;
+    applyFilter(ctx, leftFilter, { x: 0, y: 0, w: half, h: PHOTO_H });
+    applyFilter(ctx, rightFilter, { x: half, y: 0, w: half, h: PHOTO_H });
     ctx.fillStyle = "rgba(251, 250, 247, 0.65)";
     ctx.fillRect(PHOTO_W / 2 - 1, 0, 2, PHOTO_H);
     return c;
@@ -393,7 +600,7 @@
     if (state.capturing || !state.stream) return;
     if (duo.active) {
       if (duo.role !== "host" || !duo.connOpen || !duo.remoteReady) return;
-      const settings = { theme: state.theme, shots: state.shots, caption: currentCaption() };
+      const settings = { theme: state.theme, shots: state.shots, caption: currentCaption(), filter: state.filter };
       try { duo.conn.send({ type: "go", settings }); } catch (_) {}
       runCapture({ ...settings, duo: true });
     } else {
@@ -679,6 +886,9 @@
     $("#remotePane").hidden = !isDuo;
     $("#localLabel").hidden = !isDuo;
     $("#flipBtn").hidden = isDuo;
+    // host stays on the left on both devices, matching the printed strip
+    $("#cameraWrap").classList.toggle("guest-view", isDuo && duo.role === "guest");
+    refreshOverlays();
     $("#remoteWaiting").hidden = !isDuo || duo.remoteReady;
     const status = $("#duoStatus");
     status.hidden = !isDuo;
@@ -762,6 +972,9 @@
     duo.conn = conn;
     conn.on("open", async () => {
       duo.connOpen = true;
+      if (state.filter !== "none") {
+        try { conn.send({ type: "filter", value: state.filter }); } catch (_) {}
+      }
       if (duo.role === "host") {
         $("#hostStatus").textContent = "they're here!";
         showScreen("screen-setup");
@@ -812,6 +1025,7 @@
     if (!msg || typeof msg !== "object") return;
     if (msg.type === "go" && msg.settings) {
       if (state.capturing) return;
+      if (FILTERS.hasOwnProperty(msg.settings.filter)) duo.remoteFilter = msg.settings.filter;
       if (!$("#screen-booth").classList.contains("active")) showScreen("screen-booth");
       if (!state.stream) await startCamera();
       runCapture({
@@ -820,6 +1034,9 @@
         caption: msg.settings.caption,
         duo: true,
       });
+    } else if (msg.type === "filter") {
+      duo.remoteFilter = FILTERS.hasOwnProperty(msg.value) ? msg.value : "none";
+      refreshOverlays();
     } else if (msg.type === "camera-trouble") {
       duo.remoteCamTrouble = true;
       updateBoothUI();
@@ -879,6 +1096,7 @@
     duo.connOpen = false;
     duo.remoteReady = false;
     duo.remoteCamTrouble = false;
+    duo.remoteFilter = "none";
     if (conn) {
       try { conn.removeAllListeners(); } catch (_) {}
       if (conn.open) { try { conn.send({ type: "bye" }); } catch (_) {} }
