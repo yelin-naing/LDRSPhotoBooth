@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>two·booth — a photobooth for the two of us</title>
+  <meta name="description" content="A tiny online photobooth for long-distance couples. Take a strip, send it across the distance, put them together." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23c9564e' d='M12 21c-.4 0-.8-.15-1.1-.44C6.1 16.16 2 12.36 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09A5.98 5.98 0 0 1 16.5 3C19.58 3 22 5.42 22 8.5c0 3.86-4.1 7.66-8.9 12.06-.3.29-.7.44-1.1.44z'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <button class="wordmark" id="homeLink" aria-label="Go to home">two<span class="dot">·</span>booth</button>
+      <span class="topbar-note">photos never leave your device</span>
+    </header>
+
+    <main>
+      <!-- ============ HOME ============ -->
+      <section id="screen-home" class="screen active">
+        <div class="hero">
+          <p class="eyebrow">for the two of us, miles apart</p>
+          <h1>a little photobooth<br /><em>for us</em></h1>
+          <p class="lede">Take a photo strip, send it across the distance,<br class="wide-only" /> then put both strips together as one.</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-goto="screen-live">take photos together</button>
+            <button class="btn" data-goto="screen-setup">solo booth</button>
+            <button class="btn ghost" data-goto="screen-together">combine our strips</button>
+          </div>
+        </div>
+        <div class="hero-strips" aria-hidden="true">
+          <div class="mini-strip theme-classic"><i></i><i></i><i></i></div>
+          <div class="mini-strip theme-noir"><i></i><i></i><i></i></div>
+          <div class="mini-strip theme-blush"><i></i><i></i><i></i></div>
+          <div class="mini-strip theme-retro"><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <!-- ============ LIVE TOGETHER ============ -->
+      <section id="screen-live" class="screen">
+        <p class="eyebrow">live together mode</p>
+        <h2>one booth, two places</h2>
+        <p class="lede">Host a booth and send them the code. Once they join, you'll see each other live — and every photo captures you both.</p>
+
+        <div class="live-grid">
+          <div class="live-card">
+            <h3>host a booth</h3>
+            <p class="live-sub">you'll get a code to send them.</p>
+            <button class="btn primary" id="hostBtn">create a room</button>
+            <div class="room-code" id="roomCode" hidden></div>
+            <p class="live-status" id="hostStatus"></p>
+          </div>
+          <div class="live-divider" aria-hidden="true">or</div>
+          <div class="live-card">
+            <h3>join with a code</h3>
+            <p class="live-sub">type the code they sent you.</p>
+            <div class="join-row">
+              <input id="joinCodeInput" type="text" maxlength="4" placeholder="CODE" autocomplete="off" autocapitalize="characters" spellcheck="false" />
+              <button class="btn primary" id="joinBtn">join</button>
+            </div>
+            <p class="live-status" id="joinStatus"></p>
+          </div>
+        </div>
+
+        <div class="screen-actions">
+          <button class="btn ghost" data-goto="screen-home">back</button>
+        </div>
+      </section>
+
+      <!-- ============ SETUP ============ -->
+      <section id="screen-setup" class="screen">
+        <p class="eyebrow">step 1 of 2</p>
+        <h2>choose your booth</h2>
+        <p class="duo-note" id="setupDuoNote" hidden>&hearts; they're in the room — you're choosing for both of you</p>
+
+        <div class="design-grid" role="radiogroup" aria-label="Booth design">
+          <button class="design-card selected" data-theme="classic" role="radio" aria-checked="true">
+            <span class="mini-strip theme-classic"><i></i><i></i><i></i></span>
+            <span class="design-name">classic</span>
+            <span class="design-sub">clean &amp; timeless</span>
+          </button>
+          <button class="design-card" data-theme="noir" role="radio" aria-checked="false">
+            <span class="mini-strip theme-noir"><i></i><i></i><i></i></span>
+            <span class="design-name">noir</span>
+            <span class="design-sub">black &amp; white film</span>
+          </button>
+          <button class="design-card" data-theme="blush" role="radio" aria-checked="false">
+            <span class="mini-strip theme-blush"><i></i><i></i><i></i></span>
+            <span class="design-name">blush</span>
+            <span class="design-sub">soft &amp; sweet</span>
+          </button>
+          <button class="design-card" data-theme="retro" role="radio" aria-checked="false">
+            <span class="mini-strip theme-retro"><i></i><i></i><i></i></span>
+            <span class="design-name">retro</span>
+            <span class="design-sub">warm old paper</span>
+          </button>
+        </div>
+
+        <div class="setup-row">
+          <div class="field">
+            <label class="field-label" for="captionInput">caption on the strip</label>
+            <input id="captionInput" type="text" maxlength="26" placeholder="you + me" autocomplete="off" />
+          </div>
+          <div class="field">
+            <span class="field-label" id="shotsLabel">photos per strip</span>
+            <div class="segmented" role="radiogroup" aria-labelledby="shotsLabel">
+              <button class="seg selected" data-shots="3" role="radio" aria-checked="true">3</button>
+              <button class="seg" data-shots="4" role="radio" aria-checked="false">4</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="screen-actions">
+          <button class="btn primary" id="openBoothBtn">open the camera</button>
+          <button class="btn ghost" data-goto="screen-home">back</button>
+        </div>
+      </section>
+
+      <!-- ============ BOOTH ============ -->
+      <section id="screen-booth" class="screen">
+        <p class="eyebrow">step 2 of 2</p>
+        <h2 id="boothTitle">smile, you're on camera</h2>
+
+        <div class="camera-wrap" id="cameraWrap">
+          <div class="video-pane">
+            <video id="video" autoplay playsinline muted></video>
+            <span class="video-label" id="localLabel" hidden>you</span>
+          </div>
+          <div class="video-pane" id="remotePane" hidden>
+            <video id="remoteVideo" autoplay playsinline muted></video>
+            <span class="video-label">them</span>
+            <div class="remote-waiting" id="remoteWaiting">waiting for them&hellip;</div>
+          </div>
+          <div id="countdown" class="countdown" aria-live="polite"></div>
+          <div id="cameraError" class="camera-error" hidden>
+            <p><strong>camera unavailable</strong></p>
+            <p id="cameraErrorMsg">Please allow camera access in your browser, then try again.</p>
+            <button class="btn small" id="retryCameraBtn">try again</button>
+          </div>
+        </div>
+        <p class="duo-status" id="duoStatus" hidden></p>
+
+        <div class="shot-dots" id="shotDots" aria-label="Photos taken"></div>
+
+        <div class="booth-controls">
+          <button class="btn ghost" id="boothBackBtn">back</button>
+          <button class="shutter" id="shutterBtn" aria-label="Start taking photos">
+            <span class="shutter-ring"></span>
+          </button>
+          <button class="btn ghost" id="flipBtn" aria-label="Flip camera">flip</button>
+        </div>
+        <p class="hint" id="boothHint">3&hellip; 2&hellip; 1&hellip; each photo has a short countdown</p>
+      </section>
+
+      <!-- ============ RESULT ============ -->
+      <section id="screen-result" class="screen">
+        <p class="eyebrow">your strip is ready</p>
+        <h2>send it across the distance</h2>
+        <div class="result-wrap">
+          <img id="resultImg" alt="Your finished photo strip" />
+        </div>
+        <div class="screen-actions">
+          <button class="btn primary" id="downloadBtn">download</button>
+          <button class="btn" id="shareBtn" hidden>share</button>
+          <button class="btn ghost" id="retakeBtn">retake</button>
+          <button class="btn ghost" data-goto="screen-setup">new session</button>
+        </div>
+        <button class="link-btn" id="toTogetherBtn">have their strip already? combine them &rarr;</button>
+      </section>
+
+      <!-- ============ TOGETHER ============ -->
+      <section id="screen-together" class="screen">
+        <p class="eyebrow">together mode</p>
+        <h2>two strips, one frame</h2>
+        <p class="lede">Add your strip and theirs — we'll join them side by side.</p>
+
+        <div class="slots">
+          <label class="slot" id="slotA">
+            <input type="file" accept="image/*" id="fileA" hidden />
+            <img id="thumbA" alt="" hidden />
+            <span class="slot-text" id="slotAText">+ your strip</span>
+          </label>
+          <span class="slot-heart" aria-hidden="true">&hearts;</span>
+          <label class="slot" id="slotB">
+            <input type="file" accept="image/*" id="fileB" hidden />
+            <img id="thumbB" alt="" hidden />
+            <span class="slot-text" id="slotBText">+ their strip</span>
+          </label>
+        </div>
+
+        <div class="field together-caption">
+          <label class="field-label" for="togetherCaption">caption</label>
+          <input id="togetherCaption" type="text" maxlength="30" placeholder="together, always" autocomplete="off" />
+        </div>
+
+        <div class="screen-actions">
+          <button class="btn primary" id="mergeBtn" disabled>put us together</button>
+          <button class="btn ghost" data-goto="screen-home">back</button>
+        </div>
+
+        <div class="result-wrap" id="coupleResultWrap" hidden>
+          <img id="coupleImg" alt="Combined couple photo strip" />
+          <div class="screen-actions">
+            <button class="btn primary" id="coupleDownloadBtn">download</button>
+            <button class="btn" id="coupleShareBtn" hidden>share</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>made with &hearts; for long-distance love</span>
+    </footer>
+  </div>
+
+  <div id="flash" aria-hidden="true"></div>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
