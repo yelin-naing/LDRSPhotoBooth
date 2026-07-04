@@ -9,6 +9,10 @@
     theme: "classic",
     shots: 3,
     filter: "none",
+    border: "none",
+    borderColor: "#c9564e",
+    coupleBorder: "hearts",
+    coupleColor: "#c9564e",
     facing: "user",
     stream: null,
     capturing: false,
@@ -101,6 +105,58 @@
         ctx.setLineDash([]);
       },
     },
+    sweet: {
+      bg: "#f3ecff", fg: "#7a5aa6", sub: "#b09ccf",
+      pad: 48, gap: 28, footerH: 150,
+      captionFrac: 0.36, dateFrac: 0.62,
+      filter: "saturate(1.08) brightness(1.04)",
+      captionFont: 'italic 500 33px "Fraunces", serif',
+      dateFont: '400 20px "Inter", sans-serif',
+      roundPhotos: 20,
+      paintBg(ctx, w, h) {
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, "#ffe3ef");
+        grad.addColorStop(1, "#e6e0ff");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+      },
+      decorate(ctx, w, h) {
+        // scattered sparkles in the corners
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        const spark = (x, y, s) => {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.beginPath();
+          for (let i = 0; i < 4; i++) {
+            ctx.rotate(Math.PI / 2);
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(s * 0.2, s * 0.2, s, 0);
+            ctx.quadraticCurveTo(s * 0.2, -s * 0.2, 0, 0);
+          }
+          ctx.fill();
+          ctx.restore();
+        };
+        spark(w - 46, 40, 15); spark(40, 60, 10);
+        spark(w - 60, h - 54, 11); spark(52, h - 44, 8);
+      },
+    },
+    love: {
+      bg: "#fff6f2", fg: "#c0554e", sub: "#dba09a",
+      pad: 50, gap: 28, footerH: 152,
+      captionFrac: 0.34, dateFrac: 0.6,
+      filter: "saturate(1.04) brightness(1.02)",
+      captionFont: 'italic 500 34px "Fraunces", serif',
+      dateFont: '400 20px "Inter", sans-serif',
+      roundPhotos: 12,
+      decorate(ctx, w, h) {
+        ctx.fillStyle = "#e79a94";
+        drawHeart(ctx, w / 2, h - 30, 11);
+        // tiny hearts in each corner
+        [[36, 36], [w - 36, 36], [36, h - 36], [w - 36, h - 36]].forEach(([x, y]) =>
+          drawHeart(ctx, x, y, 7)
+        );
+      },
+    },
   };
 
   const PHOTO_W = 640, PHOTO_H = 480;
@@ -126,6 +182,71 @@
     ctx.bezierCurveTo(cx - size * 1.6, cy - size * 0.4, cx - size * 0.7, cy - size * 1.4, cx, cy - size * 0.4);
     ctx.bezierCurveTo(cx + size * 0.7, cy - size * 1.4, cx + size * 1.6, cy - size * 0.4, cx, cy + size * 0.9);
     ctx.fill();
+  }
+
+  function drawSparkle(ctx, x, y, s) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(s * 0.22, s * 0.22, s, 0);
+      ctx.quadraticCurveTo(s * 0.22, -s * 0.22, 0, 0);
+    }
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ---------- customizable strip borders ----------
+  // place a motif evenly around the rectangle perimeter, inset by m
+  function perimeterMotifs(w, h, m, step, fn) {
+    for (let x = m; x <= w - m; x += step) fn(x, m);              // top
+    for (let y = m + step; y <= h - m; y += step) fn(w - m, y);   // right
+    for (let x = w - m - step; x >= m; x -= step) fn(x, h - m);   // bottom
+    for (let y = h - m - step; y >= m + step; y -= step) fn(m, y); // left
+  }
+
+  const BORDERS = {
+    none: null,
+    hearts(ctx, w, h, color) {
+      ctx.fillStyle = color;
+      perimeterMotifs(w, h, 17, 42, (x, y) => drawHeart(ctx, x, y, 8));
+    },
+    dots(ctx, w, h, color) {
+      ctx.fillStyle = color;
+      perimeterMotifs(w, h, 16, 30, (x, y) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    },
+    stars(ctx, w, h, color) {
+      ctx.fillStyle = color;
+      perimeterMotifs(w, h, 18, 48, (x, y) => drawSparkle(ctx, x, y, 8));
+    },
+    scallop(ctx, w, h, color) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      const m = 18, r = 13;
+      const arc = (cx, cy, a0, a1) => { ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke(); };
+      for (let x = m + r; x <= w - m - r; x += 2 * r) arc(x, m, 0, Math.PI);              // top
+      for (let y = m + r; y <= h - m - r; y += 2 * r) arc(w - m, y, Math.PI / 2, -Math.PI / 2); // right
+      for (let x = m + r; x <= w - m - r; x += 2 * r) arc(x, h - m, Math.PI, 2 * Math.PI);// bottom
+      for (let y = m + r; y <= h - m - r; y += 2 * r) arc(m, y, -Math.PI / 2, Math.PI / 2); // left
+    },
+    film(ctx, w, h, color) {
+      ctx.fillStyle = color;
+      const holeW = 20, holeH = 14, step = 44;
+      for (let y = 28; y < h - 32; y += step) {
+        roundRect(ctx, 14, y, holeW, holeH, 4); ctx.fill();
+        roundRect(ctx, w - 14 - holeW, y, holeW, holeH, 4); ctx.fill();
+      }
+    },
+  };
+
+  function applyBorder(ctx, key, w, h, color) {
+    if (key && BORDERS[key]) BORDERS[key](ctx, w, h, color);
   }
 
   // ---------- fun filters ----------
@@ -556,6 +677,30 @@
     })
   );
 
+  // ---------- border / frame pickers ----------
+  function bindRadioGroup(selector, onPick) {
+    const items = $$(selector);
+    items.forEach((el) =>
+      el.addEventListener("click", () => {
+        items.forEach((o) => { o.classList.remove("selected"); o.setAttribute("aria-checked", "false"); });
+        el.classList.add("selected");
+        el.setAttribute("aria-checked", "true");
+        onPick(el);
+      })
+    );
+  }
+
+  bindRadioGroup("#borderRow .opt-chip", (el) => { state.border = el.dataset.border; });
+  bindRadioGroup("#borderColorRow .swatch", (el) => { state.borderColor = el.dataset.color; });
+  bindRadioGroup("#coupleBorderRow .opt-chip", (el) => {
+    state.coupleBorder = el.dataset.border;
+    if (!$("#coupleResultWrap").hidden) renderCouple(false);
+  });
+  bindRadioGroup("#coupleColorRow .swatch", (el) => {
+    state.coupleColor = el.dataset.color;
+    if (!$("#coupleResultWrap").hidden) renderCouple(false);
+  });
+
   window.addEventListener("resize", () => {
     if ($("#screen-booth").classList.contains("active")) refreshOverlays();
   });
@@ -815,11 +960,17 @@
     if (state.capturing || !state.stream) return;
     if (duo.active) {
       if (duo.role !== "host" || !duo.connOpen || !duo.remoteReady) return;
-      const settings = { theme: state.theme, shots: state.shots, caption: currentCaption(), filter: state.filter };
+      const settings = {
+        theme: state.theme, shots: state.shots, caption: currentCaption(),
+        filter: state.filter, border: state.border, borderColor: state.borderColor,
+      };
       try { duo.conn.send({ type: "go", settings }); } catch (_) {}
       runCapture({ ...settings, duo: true });
     } else {
-      runCapture({ theme: state.theme, shots: state.shots, caption: currentCaption(), duo: false });
+      runCapture({
+        theme: state.theme, shots: state.shots, caption: currentCaption(),
+        border: state.border, borderColor: state.borderColor, duo: false,
+      });
     }
   });
 
@@ -850,7 +1001,7 @@
     if (!shots.length) return;
 
     await document.fonts.ready;
-    const strip = composeStrip(shots, s.theme, s.caption);
+    const strip = composeStrip(shots, s.theme, s.caption, s.border, s.borderColor);
     state.lastStripUrl = strip.toDataURL("image/png");
     $("#resultImg").src = state.lastStripUrl;
     $("#shareBtn").hidden = !canShareFiles();
@@ -858,8 +1009,8 @@
   }
 
   // ---------- strip composition ----------
-  function composeStrip(shots, themeKey, caption) {
-    const t = THEMES[themeKey];
+  function composeStrip(shots, themeKey, caption, border, borderColor) {
+    const t = THEMES[themeKey] || THEMES.classic;
     const w = PHOTO_W + t.pad * 2;
     const h = t.pad + shots.length * PHOTO_H + (shots.length - 1) * t.gap + t.footerH;
 
@@ -868,8 +1019,12 @@
     c.height = h;
     const ctx = c.getContext("2d");
 
-    ctx.fillStyle = t.bg;
-    ctx.fillRect(0, 0, w, h);
+    if (t.paintBg) {
+      t.paintBg(ctx, w, h);
+    } else {
+      ctx.fillStyle = t.bg;
+      ctx.fillRect(0, 0, w, h);
+    }
 
     shots.forEach((shot, i) => {
       const y = t.pad + i * (PHOTO_H + t.gap);
@@ -903,6 +1058,7 @@
     ctx.fillText(prettyDate(), w / 2, footerTop + t.footerH * (t.dateFrac || 0.72));
 
     if (t.decorate) t.decorate(ctx, w, h);
+    applyBorder(ctx, border, w, h, borderColor || "#c9564e");
     return c;
   }
 
@@ -986,26 +1142,29 @@
   wireSlot("A");
   wireSlot("B");
 
-  $("#mergeBtn").addEventListener("click", async () => {
+  async function renderCouple(scrollTo) {
     if (!state.imgA || !state.imgB) return;
     await document.fonts.ready;
     const caption = $("#togetherCaption").value.trim() || "together, always";
-    const canvas = composeCouple(state.imgA, state.imgB, caption);
+    const canvas = composeCouple(state.imgA, state.imgB, caption, state.coupleBorder, state.coupleColor);
     const url = canvas.toDataURL("image/png");
     $("#coupleImg").src = url;
     $("#coupleResultWrap").hidden = false;
     $("#coupleShareBtn").hidden = !canShareFiles();
     state.coupleUrl = url;
-    $("#coupleImg").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+    if (scrollTo) $("#coupleImg").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
-  function composeCouple(imgA, imgB, caption) {
+  $("#mergeBtn").addEventListener("click", () => renderCouple(true));
+
+  function composeCouple(imgA, imgB, caption, border, borderColor) {
     const H = 1400;              // common strip height
     const pad = 70, gap = 56, headerH = 170, footH = 90;
     const wA = Math.round(imgA.width * (H / imgA.height));
     const wB = Math.round(imgB.width * (H / imgB.height));
     const w = pad * 2 + wA + gap + wB;
     const h = headerH + H + footH;
+    const color = borderColor || "#c9564e";
 
     const c = document.createElement("canvas");
     c.width = w;
@@ -1014,9 +1173,6 @@
 
     ctx.fillStyle = "#fbfaf7";
     ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = "#e7e3da";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(24, 24, w - 48, h - 48);
 
     // header caption
     ctx.textAlign = "center";
@@ -1034,13 +1190,22 @@
     ctx.restore();
 
     // heart between the strips
-    ctx.fillStyle = "#c9564e";
+    ctx.fillStyle = color;
     drawHeart(ctx, pad + wA + gap / 2, headerH + H / 2, 20);
 
     // footer date
     ctx.fillStyle = "#9a948a";
     ctx.font = '400 26px "Inter", sans-serif';
     ctx.fillText(`${prettyDate()} · miles apart, still together`, w / 2, h - footH * 0.42);
+
+    // decorative frame — or a plain hairline when "none"
+    if (border && border !== "none") {
+      applyBorder(ctx, border, w, h, color);
+    } else {
+      ctx.strokeStyle = "#e7e3da";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(24, 24, w - 48, h - 48);
+    }
 
     return c;
   }
@@ -1247,6 +1412,8 @@
         theme: msg.settings.theme,
         shots: msg.settings.shots,
         caption: msg.settings.caption,
+        border: msg.settings.border,
+        borderColor: msg.settings.borderColor,
         duo: true,
       });
     } else if (msg.type === "filter") {
@@ -1348,7 +1515,7 @@
     if (duo.active) leaveDuo(true);
   });
 
-  window.__booth = { duo, state, faceTrack, buildFaceGeom, coverMap, geomFromLandmarks, grabFrame, grabDuoFrame }; // debug handle
+  window.__booth = { duo, state, faceTrack, buildFaceGeom, coverMap, geomFromLandmarks, grabFrame, grabDuoFrame, composeStrip, composeCouple, THEMES, BORDERS }; // debug handle
 
   // pause the camera while the tab is hidden, bring it back on return
   // (in a live session the stream keeps feeding the call, so leave it running)

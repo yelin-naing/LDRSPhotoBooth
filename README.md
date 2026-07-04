@@ -6,7 +6,12 @@ and take every photo together in real time.
 
 ## Features
 
-- **Four booth designs** — classic, noir (b&w film), blush (soft pink), retro (warm paper)
+- **Six booth designs** — classic, noir (b&w film), blush, retro (warm paper),
+  and two couple frames: **sweet** (dreamy pastel gradient) and **love** (soft rose)
+- **Customizable borders** — frame any strip with hearts, dots, stars, scallop, or
+  film sprockets, in your choice of color; the couple-combine frame is customizable too
+- **Playful animations** — floating hearts, staggered entrances, a beating logo,
+  and a strip that drops into place (all respect `prefers-reduced-motion`)
 - **Photo strips** — 3 or 4 shots with countdown, flash, caption, and date; download or share
 - **Live together mode** — one of you hosts and gets a 4-letter code, the other
   joins with it. You see each other side by side and every photo captures you

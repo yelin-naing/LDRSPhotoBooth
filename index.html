@@ -21,6 +21,10 @@
     <main>
       <!-- ============ HOME ============ -->
       <section id="screen-home" class="screen active">
+        <div class="floaties" aria-hidden="true">
+          <span>&hearts;</span><span>&#9825;</span><span>&#10022;</span>
+          <span>&hearts;</span><span>&#10023;</span><span>&#9825;</span><span>&hearts;</span>
+        </div>
         <div class="hero">
           <p class="eyebrow">for the two of us, miles apart</p>
           <h1>a little photobooth<br /><em>for us</em></h1>
@@ -32,9 +36,9 @@
           </div>
         </div>
         <div class="hero-strips" aria-hidden="true">
-          <div class="mini-strip theme-classic"><i></i><i></i><i></i></div>
+          <div class="mini-strip theme-sweet"><i></i><i></i><i></i></div>
           <div class="mini-strip theme-noir"><i></i><i></i><i></i></div>
-          <div class="mini-strip theme-blush"><i></i><i></i><i></i></div>
+          <div class="mini-strip theme-love"><i></i><i></i><i></i></div>
           <div class="mini-strip theme-retro"><i></i><i></i><i></i></div>
         </div>
       </section>
@@ -97,6 +101,36 @@
             <span class="design-name">retro</span>
             <span class="design-sub">warm old paper</span>
           </button>
+          <button class="design-card" data-theme="sweet" role="radio" aria-checked="false">
+            <span class="mini-strip theme-sweet"><i></i><i></i><i></i></span>
+            <span class="design-name">sweet</span>
+            <span class="design-sub">dreamy pastel</span>
+          </button>
+          <button class="design-card" data-theme="love" role="radio" aria-checked="false">
+            <span class="mini-strip theme-love"><i></i><i></i><i></i></span>
+            <span class="design-name">love</span>
+            <span class="design-sub">for the two of us</span>
+          </button>
+        </div>
+
+        <div class="customizer">
+          <span class="field-label">border</span>
+          <div class="chip-row" id="borderRow" role="radiogroup" aria-label="Strip border">
+            <button class="opt-chip selected" data-border="none" role="radio" aria-checked="true">none</button>
+            <button class="opt-chip" data-border="hearts" role="radio" aria-checked="false">&hearts; hearts</button>
+            <button class="opt-chip" data-border="dots" role="radio" aria-checked="false">&bull; dots</button>
+            <button class="opt-chip" data-border="stars" role="radio" aria-checked="false">&#10022; stars</button>
+            <button class="opt-chip" data-border="scallop" role="radio" aria-checked="false">&#9096; scallop</button>
+            <button class="opt-chip" data-border="film" role="radio" aria-checked="false">&#9635; film</button>
+          </div>
+          <div class="swatch-row" id="borderColorRow" role="radiogroup" aria-label="Border color">
+            <button class="swatch selected" data-color="#c9564e" style="--sw:#c9564e" role="radio" aria-checked="true" aria-label="rose"></button>
+            <button class="swatch" data-color="#d8a94a" style="--sw:#d8a94a" role="radio" aria-checked="false" aria-label="gold"></button>
+            <button class="swatch" data-color="#e78fa0" style="--sw:#e78fa0" role="radio" aria-checked="false" aria-label="blush"></button>
+            <button class="swatch" data-color="#1c1a17" style="--sw:#1c1a17" role="radio" aria-checked="false" aria-label="ink"></button>
+            <button class="swatch" data-color="#6aa7c4" style="--sw:#6aa7c4" role="radio" aria-checked="false" aria-label="sky"></button>
+            <button class="swatch" data-color="#ffffff" style="--sw:#ffffff" role="radio" aria-checked="false" aria-label="cream"></button>
+          </div>
         </div>
 
         <div class="setup-row">
@@ -206,6 +240,24 @@
         <div class="field together-caption">
           <label class="field-label" for="togetherCaption">caption</label>
           <input id="togetherCaption" type="text" maxlength="30" placeholder="together, always" autocomplete="off" />
+        </div>
+
+        <div class="customizer center">
+          <span class="field-label">frame</span>
+          <div class="chip-row" id="coupleBorderRow" role="radiogroup" aria-label="Couple frame">
+            <button class="opt-chip selected" data-border="hearts" role="radio" aria-checked="true">&hearts; hearts</button>
+            <button class="opt-chip" data-border="none" role="radio" aria-checked="false">none</button>
+            <button class="opt-chip" data-border="dots" role="radio" aria-checked="false">&bull; dots</button>
+            <button class="opt-chip" data-border="stars" role="radio" aria-checked="false">&#10022; stars</button>
+            <button class="opt-chip" data-border="scallop" role="radio" aria-checked="false">&#9096; scallop</button>
+          </div>
+          <div class="swatch-row" id="coupleColorRow" role="radiogroup" aria-label="Frame color">
+            <button class="swatch selected" data-color="#c9564e" style="--sw:#c9564e" role="radio" aria-checked="true" aria-label="rose"></button>
+            <button class="swatch" data-color="#d8a94a" style="--sw:#d8a94a" role="radio" aria-checked="false" aria-label="gold"></button>
+            <button class="swatch" data-color="#e78fa0" style="--sw:#e78fa0" role="radio" aria-checked="false" aria-label="blush"></button>
+            <button class="swatch" data-color="#1c1a17" style="--sw:#1c1a17" role="radio" aria-checked="false" aria-label="ink"></button>
+            <button class="swatch" data-color="#6aa7c4" style="--sw:#6aa7c4" role="radio" aria-checked="false" aria-label="sky"></button>
+          </div>
         </div>
 
         <div class="screen-actions">
