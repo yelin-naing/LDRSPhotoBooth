@@ -1,0 +1,3 @@
+# Face-api model weight shards are binary — never touch line endings
+faceapi/*-shard* binary
+*.min.js -text

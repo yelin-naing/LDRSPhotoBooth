@@ -11,8 +11,13 @@ and take every photo together in real time.
 - **Live together mode** — one of you hosts and gets a 4-letter code, the other
   joins with it. You see each other side by side and every photo captures you
   both at the same moment. Both of you get the same strip.
-- **Fun filters** — dog, bunny, shades, mustache, heart crown, and crown; each of
-  you picks your own, sees each other's live, and both land on the strip
+- **Fun filters** — dog, bunny, shades, mustache, hearts, and crown, with
+  **real-time face tracking** (they size to your face, follow it, and tilt with
+  your head). Each of you picks your own, sees the other's live, and both land on
+  the strip. Powered by a small, self-hosted face-detection model
+  ([face-api.js](https://github.com/justadudewhohacks/face-api.js)) that loads
+  only the first time a filter is used; if it can't load, filters fall back to a
+  fixed on-screen position.
 - **Combine mode** — merge two separately-taken strips into one couple frame
 - **Private by design** — no accounts, no backend, photos never leave your devices.
   Live mode uses a direct peer-to-peer WebRTC connection (PeerJS is used only to

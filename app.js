@@ -129,8 +129,8 @@
   }
 
   // ---------- fun filters ----------
-  // Drawn as vector overlays sized to a "typical face" spot in the frame —
-  // line up your face with the preview and they land right.
+  // Vector overlays positioned by real-time face tracking when available;
+  // faceBox() is the fixed-position fallback (line your face up with it).
   function faceBox(r) {
     const fw = Math.min(r.w * 0.62, r.h * 0.5);
     return {
@@ -156,8 +156,7 @@
 
   const FILTERS = {
     none: null,
-    dog(ctx, r) {
-      const f = faceBox(r);
+    dog(ctx, f) {
       blob(ctx, f.cx - f.fw * 0.45, f.top, f.fw * 0.16, f.fw * 0.3, -0.5, "#7a4f33");
       blob(ctx, f.cx + f.fw * 0.45, f.top, f.fw * 0.16, f.fw * 0.3, 0.5, "#7a4f33");
       blob(ctx, f.cx - f.fw * 0.45, f.top + f.fw * 0.03, f.fw * 0.09, f.fw * 0.2, -0.5, "#a8765a");
@@ -174,8 +173,7 @@
       ctx.lineTo(f.cx, f.mouthY + f.fw * 0.2);
       ctx.stroke();
     },
-    bunny(ctx, r) {
-      const f = faceBox(r);
+    bunny(ctx, f) {
       const earY = f.top - f.fw * 0.3;
       blob(ctx, f.cx - f.fw * 0.22, earY, f.fw * 0.11, f.fw * 0.38, -0.12, "#f7f3ee");
       blob(ctx, f.cx + f.fw * 0.22, earY, f.fw * 0.11, f.fw * 0.38, 0.12, "#f7f3ee");
@@ -196,8 +194,7 @@
         }
       }
     },
-    shades(ctx, r) {
-      const f = faceBox(r);
+    shades(ctx, f) {
       const lw = f.fw * 0.3, lh = f.fw * 0.2, gap = f.fw * 0.08;
       ctx.fillStyle = "#17171a";
       roundRect(ctx, f.cx - gap / 2 - lw, f.eyeY - lh / 2, lw, lh, lh * 0.35);
@@ -225,8 +222,7 @@
       ctx.lineTo(f.cx - gap / 2 - lw * 0.35, f.eyeY + lh * 0.2);
       ctx.stroke();
     },
-    mustache(ctx, r) {
-      const f = faceBox(r);
+    mustache(ctx, f) {
       const y = f.mouthY - f.fw * 0.06;
       ctx.fillStyle = "#33241a";
       for (const s of [-1, 1]) {
@@ -246,8 +242,7 @@
         ctx.fill();
       }
     },
-    hearts(ctx, r) {
-      const f = faceBox(r);
+    hearts(ctx, f) {
       const y0 = f.top - f.fw * 0.18;
       const cols = ["#c9564e", "#e78fa0", "#c9564e", "#e78fa0", "#c9564e"];
       const pos = [-0.5, -0.26, 0, 0.26, 0.5];
@@ -258,8 +253,7 @@
         drawHeart(ctx, f.cx + pos[i] * f.fw * 1.15, y0 + ys[i] * f.fw, sz[i] * f.fw);
       }
     },
-    crown(ctx, r) {
-      const f = faceBox(r);
+    crown(ctx, f) {
       const w = f.fw * 0.72, h = f.fw * 0.4;
       const x0 = f.cx - w / 2, yb = f.top - f.fw * 0.05;
       ctx.fillStyle = "#e8b23a";
@@ -285,23 +279,196 @@
     },
   };
 
-  function applyFilter(ctx, key, region) {
-    if (key && FILTERS[key]) FILTERS[key](ctx, region);
+  // draw a filter for face geometry `f`, tilting it with the head
+  function applyFilter(ctx, key, f) {
+    if (!key || key === "none" || !FILTERS[key] || !f) return;
+    ctx.save();
+    if (f.angle) {
+      ctx.translate(f.cx, f.eyeY);
+      ctx.rotate(f.angle);
+      ctx.translate(-f.cx, -f.eyeY);
+    }
+    FILTERS[key](ctx, f);
+    ctx.restore();
   }
 
-  function drawOverlay(canvas, key) {
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (!w || !h) return;
-    if (canvas.width !== w) canvas.width = w;
-    if (canvas.height !== h) canvas.height = h;
+  // build filter geometry in a target canvas from a tracked face (video space)
+  // mapX/mapY project a video-pixel coord into the target; angleSign flips tilt
+  // when the target is horizontally mirrored.
+  function buildFaceGeom(g, mapX, mapY, scale, angleSign) {
+    const cx = mapX(g.eyeMidX);
+    const eyeY = mapY(g.eyeMidY);
+    const fw = g.fw * scale;
+    return {
+      cx, eyeY, fw,
+      top: eyeY - fw * 0.4,
+      noseY: eyeY + fw * 0.2,
+      mouthY: eyeY + fw * 0.44,
+      angle: angleSign * g.angle,
+    };
+  }
+
+  // object-fit: cover mapping from intrinsic video px to displayed canvas px
+  function coverMap(vw, vh, cw, ch) {
+    const scale = Math.max(cw / vw, ch / vh);
+    return { scale, offsetX: (cw - vw * scale) / 2, offsetY: (ch - vh * scale) / 2 };
+  }
+
+  // draw one preview overlay; tracked when a face is available, else fixed-position
+  function drawFilterOverlay(canvas, store, key, mirrored) {
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    if (!cw || !ch) return;
+    if (canvas.width !== cw) canvas.width = cw;
+    if (canvas.height !== ch) canvas.height = ch;
     const ctx = canvas.getContext("2d");
-    ctx.clearRect(0, 0, w, h);
-    applyFilter(ctx, key, { x: 0, y: 0, w, h });
+    ctx.clearRect(0, 0, cw, ch);
+    if (!key || key === "none") return;
+    const g = store && store.smooth;
+    if (g && store.vw) {
+      const m = coverMap(store.vw, store.vh, cw, ch);
+      const f = buildFaceGeom(
+        g,
+        (px) => (mirrored ? cw - (m.offsetX + px * m.scale) : m.offsetX + px * m.scale),
+        (py) => m.offsetY + py * m.scale,
+        m.scale,
+        mirrored ? -1 : 1
+      );
+      applyFilter(ctx, key, f);
+    } else {
+      applyFilter(ctx, key, faceBox({ x: 0, y: 0, w: cw, h: ch }));
+    }
   }
 
   function refreshOverlays() {
-    drawOverlay($("#localOverlay"), state.filter);
-    drawOverlay($("#remoteOverlay"), duo.active ? duo.remoteFilter : "none");
+    drawFilterOverlay($("#localOverlay"), faceTrack.local, state.filter, state.facing === "user");
+    drawFilterOverlay($("#remoteOverlay"), faceTrack.remote, duo.active ? duo.remoteFilter : "none", true);
+  }
+
+  // ---------- real-time face tracking (lazy-loaded, self-hosted) ----------
+  const faceTrack = {
+    scriptPromise: null,
+    ready: false,
+    loading: false,
+    running: false,
+    raf: null,
+    opts: null,
+    local: { smooth: null, vw: 0, vh: 0, lastSeen: 0 },
+    remote: { smooth: null, vw: 0, vh: 0, lastSeen: 0 },
+  };
+
+  function anyFilterActive() {
+    return (
+      (state.filter && state.filter !== "none") ||
+      (duo.active && duo.remoteFilter && duo.remoteFilter !== "none")
+    );
+  }
+
+  function loadFaceScript() {
+    if (window.faceapi) return Promise.resolve(true);
+    if (!faceTrack.scriptPromise) {
+      faceTrack.scriptPromise = new Promise((resolve) => {
+        const s = document.createElement("script");
+        s.src = "faceapi/face-api.min.js";
+        s.onload = () => resolve(true);
+        s.onerror = () => resolve(false);
+        document.head.appendChild(s);
+      });
+    }
+    return faceTrack.scriptPromise;
+  }
+
+  async function ensureModels() {
+    if (faceTrack.ready || faceTrack.loading) return faceTrack.ready;
+    faceTrack.loading = true;
+    try {
+      if (!(await loadFaceScript()) || !window.faceapi) return false;
+      await faceapi.nets.tinyFaceDetector.loadFromUri("faceapi");
+      await faceapi.nets.faceLandmark68TinyNet.loadFromUri("faceapi");
+      faceTrack.opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+      faceTrack.ready = true;
+    } catch (_) {
+      faceTrack.ready = false;
+    } finally {
+      faceTrack.loading = false;
+    }
+    return faceTrack.ready;
+  }
+
+  function geomFromLandmarks(lm) {
+    const center = (pts) => {
+      let x = 0, y = 0;
+      for (const p of pts) { x += p.x; y += p.y; }
+      return { x: x / pts.length, y: y / pts.length };
+    };
+    const L = center(lm.getLeftEye());
+    const R = center(lm.getRightEye());
+    // order by image-x so head tilt reads consistently, regardless of which
+    // eye the model labels "left"
+    const a = L.x <= R.x ? L : R;
+    const b = L.x <= R.x ? R : L;
+    const eyeDist = Math.hypot(R.x - L.x, R.y - L.y) || 1;
+    return {
+      eyeMidX: (L.x + R.x) / 2,
+      eyeMidY: (L.y + R.y) / 2,
+      fw: eyeDist * 2.35, // eye spacing → characteristic face width for the filters
+      angle: Math.atan2(b.y - a.y, b.x - a.x),
+    };
+  }
+
+  function smoothGeom(store, raw, vw, vh) {
+    store.vw = vw;
+    store.vh = vh;
+    if (!raw) {
+      if (performance.now() - store.lastSeen > 500) store.smooth = null;
+      return;
+    }
+    store.lastSeen = performance.now();
+    if (!store.smooth) {
+      store.smooth = { ...raw };
+    } else {
+      const k = 0.5; // ease toward the new reading to kill jitter
+      const s = store.smooth;
+      s.eyeMidX += (raw.eyeMidX - s.eyeMidX) * k;
+      s.eyeMidY += (raw.eyeMidY - s.eyeMidY) * k;
+      s.fw += (raw.fw - s.fw) * k;
+      s.angle += (raw.angle - s.angle) * k;
+    }
+  }
+
+  async function detectInto(video, store) {
+    if (!video || !video.videoWidth) return;
+    let res = null;
+    try {
+      res = await faceapi.detectSingleFace(video, faceTrack.opts).withFaceLandmarks(true);
+    } catch (_) { /* ignore a dropped frame */ }
+    smoothGeom(store, res ? geomFromLandmarks(res.landmarks) : null, video.videoWidth, video.videoHeight);
+  }
+
+  async function trackLoop() {
+    if (!faceTrack.running) return;
+    const onBooth = $("#screen-booth").classList.contains("active");
+    if (faceTrack.ready && onBooth) {
+      if (state.filter && state.filter !== "none") await detectInto($("#video"), faceTrack.local);
+      if (duo.active && duo.remoteFilter && duo.remoteFilter !== "none")
+        await detectInto($("#remoteVideo"), faceTrack.remote);
+    }
+    refreshOverlays();
+    faceTrack.raf = requestAnimationFrame(trackLoop);
+  }
+
+  function startTracking() {
+    if (anyFilterActive()) ensureModels();
+    if (faceTrack.running) return;
+    faceTrack.running = true;
+    faceTrack.raf = requestAnimationFrame(trackLoop);
+  }
+
+  function stopTracking() {
+    faceTrack.running = false;
+    if (faceTrack.raf) cancelAnimationFrame(faceTrack.raf);
+    faceTrack.raf = null;
+    faceTrack.local.smooth = null;
+    faceTrack.remote.smooth = null;
   }
 
   function prettyDate() {
@@ -381,6 +548,7 @@
       chip.classList.add("selected");
       chip.setAttribute("aria-checked", "true");
       state.filter = chip.dataset.filter;
+      if (state.filter !== "none") ensureModels();
       if (duo.active && duo.conn && duo.connOpen) {
         try { duo.conn.send({ type: "filter", value: state.filter }); } catch (_) {}
       }
@@ -397,6 +565,7 @@
     if (duo.active && state.stream) {
       // the stream is feeding the live call — don't restart it
       updateBoothUI();
+      startTracking();
       return;
     }
     stopCamera();
@@ -422,6 +591,7 @@
         else tryAnswer();
       }
       updateBoothUI();
+      startTracking();
     } catch (err) {
       $("#shutterBtn").disabled = true;
       const msg = $("#cameraErrorMsg");
@@ -444,6 +614,7 @@
   }
 
   function stopCamera() {
+    stopTracking();
     if (state.stream) {
       state.stream.getTracks().forEach((t) => t.stop());
       state.stream = null;
@@ -538,13 +709,32 @@
     }
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, PHOTO_W, PHOTO_H);
     ctx.setTransform(1, 0, 0, 1, 0, 0); // undo the mirror before decorating
-    applyFilter(ctx, state.filter, { x: 0, y: 0, w: PHOTO_W, h: PHOTO_H });
+
+    if (state.filter && state.filter !== "none") {
+      const g = faceTrack.local.smooth;
+      const mirror = state.facing === "user";
+      let f;
+      if (g && faceTrack.local.vw) {
+        const scale = PHOTO_W / sw;
+        f = buildFaceGeom(
+          g,
+          (px) => (mirror ? PHOTO_W - (px - sx) * scale : (px - sx) * scale),
+          (py) => (py - sy) * scale,
+          scale,
+          mirror ? -1 : 1
+        );
+      } else {
+        f = faceBox({ x: 0, y: 0, w: PHOTO_W, h: PHOTO_H });
+      }
+      applyFilter(ctx, state.filter, f);
+    }
     return c;
   }
 
+  // draws a person into one half and returns the crop it used (for filter mapping)
   function drawVideoHalf(ctx, videoEl, dx, mirror) {
     const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-    if (!vw || !vh) return;
+    if (!vw || !vh) return null;
     const halfW = PHOTO_W / 2;
     const r = halfW / PHOTO_H; // 2:3 portrait crop per person
     let sw = vw, sh = vh;
@@ -561,32 +751,57 @@
       ctx.drawImage(videoEl, sx, sy, sw, sh, dx, 0, halfW, PHOTO_H);
     }
     ctx.restore();
+    return { sx, sy, scale: halfW / sw };
+  }
+
+  function drawHalfFilter(ctx, key, store, crop, dx, halfW, mirror) {
+    if (!key || key === "none") return;
+    const g = store && store.smooth;
+    let f;
+    if (g && crop && store.vw) {
+      const s = crop.scale;
+      f = buildFaceGeom(
+        g,
+        (px) => (mirror ? dx + halfW - (px - crop.sx) * s : dx + (px - crop.sx) * s),
+        (py) => (py - crop.sy) * s,
+        s,
+        mirror ? -1 : 1
+      );
+    } else {
+      f = faceBox({ x: dx, y: 0, w: halfW, h: PHOTO_H });
+    }
+    applyFilter(ctx, key, f);
   }
 
   function grabDuoFrame() {
-    // host is always the left half so both partners' strips come out identical
-    const local = $("#video");
-    const remote = $("#remoteVideo");
+    // host is always the left half, on both devices
+    const localV = $("#video");
+    const remoteV = $("#remoteVideo");
     const c = document.createElement("canvas");
     c.width = PHOTO_W;
     c.height = PHOTO_H;
     const ctx = c.getContext("2d");
     ctx.fillStyle = "#141414";
     ctx.fillRect(0, 0, PHOTO_W, PHOTO_H);
-    const localMirror = state.facing === "user";
-    if (duo.role === "host") {
-      drawVideoHalf(ctx, local, 0, localMirror);
-      drawVideoHalf(ctx, remote, PHOTO_W / 2, true);
-    } else {
-      drawVideoHalf(ctx, remote, 0, true);
-      drawVideoHalf(ctx, local, PHOTO_W / 2, localMirror);
-    }
-    // each person's chosen filter lands on their own half
+
     const half = PHOTO_W / 2;
-    const leftFilter = duo.role === "host" ? state.filter : duo.remoteFilter;
-    const rightFilter = duo.role === "host" ? duo.remoteFilter : state.filter;
-    applyFilter(ctx, leftFilter, { x: 0, y: 0, w: half, h: PHOTO_H });
-    applyFilter(ctx, rightFilter, { x: half, y: 0, w: half, h: PHOTO_H });
+    const localMirror = state.facing === "user";
+    const leftIsLocal = duo.role === "host";
+
+    const leftV = leftIsLocal ? localV : remoteV;
+    const rightV = leftIsLocal ? remoteV : localV;
+    const leftMirror = leftIsLocal ? localMirror : true; // remote is shown mirrored
+    const rightMirror = leftIsLocal ? true : localMirror;
+    const leftStore = leftIsLocal ? faceTrack.local : faceTrack.remote;
+    const rightStore = leftIsLocal ? faceTrack.remote : faceTrack.local;
+    const leftFilter = leftIsLocal ? state.filter : duo.remoteFilter;
+    const rightFilter = leftIsLocal ? duo.remoteFilter : state.filter;
+
+    const leftCrop = drawVideoHalf(ctx, leftV, 0, leftMirror);
+    const rightCrop = drawVideoHalf(ctx, rightV, half, rightMirror);
+    drawHalfFilter(ctx, leftFilter, leftStore, leftCrop, 0, half, leftMirror);
+    drawHalfFilter(ctx, rightFilter, rightStore, rightCrop, half, half, rightMirror);
+
     ctx.fillStyle = "rgba(251, 250, 247, 0.65)";
     ctx.fillRect(PHOTO_W / 2 - 1, 0, 2, PHOTO_H);
     return c;
@@ -1036,6 +1251,7 @@
       });
     } else if (msg.type === "filter") {
       duo.remoteFilter = FILTERS.hasOwnProperty(msg.value) ? msg.value : "none";
+      if (duo.remoteFilter !== "none") ensureModels();
       refreshOverlays();
     } else if (msg.type === "camera-trouble") {
       duo.remoteCamTrouble = true;
@@ -1132,7 +1348,7 @@
     if (duo.active) leaveDuo(true);
   });
 
-  window.__booth = { duo, state }; // debug handle
+  window.__booth = { duo, state, faceTrack, buildFaceGeom, coverMap, geomFromLandmarks, grabFrame, grabDuoFrame }; // debug handle
 
   // pause the camera while the tab is hidden, bring it back on return
   // (in a live session the stream keeps feeding the call, so leave it running)
